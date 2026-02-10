@@ -1,9 +1,8 @@
 ---
-title: "Lab 2 - Data wrangling"
-author: "John Q. Student"
-date: "June 24, 1497"
+title: "Lab 2 - Data Wrangling"
+author: "Emily Bonanni"
+date: "February 9, 2026"
 format: 
-  html: default # for speed
   pdf: default # for final output
 
 ---
@@ -14,6 +13,7 @@ format:
 #| message: false
 
 library(tidyverse)
+data("midwest")
 ```
 
 
@@ -23,34 +23,171 @@ library(tidyverse)
 
 ### Question 1
 
-
+```{r}
+midwest %>% count(state) %>% arrange(desc(n()))
+```
+Illinois has the highest number of counties (102). Wisconsin has the lowest number of counties (72).
 \newpage
 
 ### Question 2
 
+```{r}
+midwest %>% count(county) %>% filter(n>1) %>%
+knitr::kable(longtable = TRUE)
+```
 \newpage
 
 ### Question 3
+
+```{r}
+midwest %>% 
+  filter(popdensity>25000) %>% 
+  select(county,state,popdensity,poptotal,area) %>% 
+  arrange(desc(popdensity))
+```
+```{r}
+midwest %>% 
+  filter(popdensity == max(popdensity)) %>% 
+  select(county,state,popdensity,poptotal,area)
+```
+\newpage
+
+### Question 4
+
+```{r}
+midwest$popdensity %>% median()
+midwest$popdensity %>% quantile(0.25)
+midwest$popdensity %>% quantile(0.75)
+```
+The distribution of population density of counties is unimodal and extremely right-skewed. A typical Midwestern county has population density of 1156 people per unit area. The middle 50% of the counties have population densities between 622 to 2330 people per unit area.
 \newpage
 
 ### Question 5
 
+```{r}
+midwest <- midwest |>
+  mutate(metro = if_else(inmetro == 1, "Yes", "No"))
+midwest %>% count(state,metro) %>% group_by(state) %>% 
+  mutate(Proportions =n/sum(n)) %>% select(-n)
+```
 \newpage
 
 ### Question 6
 
+```{r}
+midwest %>% 
+  filter(percbelowpoverty>40) %>% 
+  select(county,state,percbelowpoverty,percollege)
+```
+```{r}
+midwest %>% 
+  filter(percollege>40) %>% 
+  select(county,state,percbelowpoverty,percollege)
+```
+```{r}
+midwest %>% 
+  filter(percollege>40 | percbelowpoverty>40) %>% select(county,state,
+  percbelowpoverty,percollege)
+```
+```{r}
+midwest1 <- midwest %>% 
+  mutate(potential_outlier = if_else(percbelowpoverty > 40 | percollege > 40, 
+  "Yes", "No")) %>%
+  select(county, state, percbelowpoverty, percollege, potential_outlier) %>%
+  arrange(potential_outlier)
+  knitr::kable(midwest1)
+```
+```{r}
+ggplot(midwest1, aes(x = percollege, y = percbelowpoverty,
+                    color = potential_outlier,
+                    shape = state)) +
+  geom_point() +
+  labs(
+    x = "Percentage with College Education",
+    y = "Percentage Below Poverty",
+    color = "Potential Outlier",
+    shape = "State",
+    title = "Education vs Poverty",
+  )
+```
 \newpage
 
 ### Question 7
 
+```{r}
+state_population <- midwest %>% 
+  group_by(state) %>% 
+  summarize(Total_Pop = sum(poptotal)) %>% 
+  arrange(desc(Total_Pop))
+state_population
+```
+```{r}
+state_population %>% 
+  mutate(Prop_Total_Pop = Total_Pop/sum(Total_Pop)) %>% 
+  arrange(desc(Prop_Total_Pop))
+```
+Illinois is the most populous with 27.2% of the Midwest living there. Wisconsin is the least populous with 11.6% of the Midwest living there. 
 \newpage
 
 ### Question 8
-
+```{r}
+state_poverty <- midwest %>%
+  group_by(state) %>%                                         
+  summarise(mean_percbelowpoverty = mean(percbelowpoverty))
+state_poverty %>%
+  arrange(mean_percbelowpoverty)
+```
+Illinois has the lowest average percentage below poverty across its counties. Michigan has the highest average percentage below poverty across its counties.
 \newpage
 
 ## Part 2
 
-
 ### Question 9
 
+```{r}
+df <- tibble(
+  var_1 = c(10, 20, 30, 40, 50),
+  var_2 = c("Pizza", "Burger", "Pizza", "Pizza", "Burger"),
+  var_3 = c("Apple", "Apple", "Pear", "Pear", "Banana")
+)
+
+df
+```
+```{r}
+df |>
+  arrange(var_2)
+```
+This function arranges the set by variable 2 in alphabetical order. The "arrange" function generally arranges numerical variables in ascending order and word variables in alphabetical order.
+```{r}
+df |>
+  group_by(var_2)
+```
+This function groups the whole data set based on variable 2 and any functions following this would only act on this group. 
+```{r}
+df |>
+  group_by(var_2) |>
+  summarize(mean_var_1 = mean(var_1))
+```
+The "pipeline" first groups data by var 2 then it calculates the mean of var 1 for each variable in var 2.
+```{r}
+df |>
+  group_by(var_2, var_3) |>
+  summarize(mean_var_1 = mean(var_1))
+```
+First, this function splits the data into groups based on combinations of var 2 and var 3. Then it calculates the mean of var 1 for each combination of var 2 and var 3. The message indicates the function is still grouping by var 2. 
+```{r}
+df |>
+  group_by(var_2, var_3) |>
+  summarize(mean_var_1 = mean(var_1), .groups = "drop")
+```
+Similarly, this function splits the data into groups based on combinations of var 2 and var 3. Then it calculates the mean of var 1 for each combination of var 2 and var 3. The output here is not different from the one in part d but the input code is. The ".groups" function removes all previous grouping that was done.
+```{r}
+df |>
+  group_by(var_2, var_3) |>
+  summarize(mean_var_1 = mean(var_1), .groups = "drop")
+
+df |>
+  group_by(var_2, var_3) |>
+  mutate(mean_var_1 = mean(var_1))
+```
+Both pipelines start by grouping the data by var 2 and var 3. In the second pipeline it calculates the mean of var 1 for each group, however it keeps all original columns. The first pipeline results in only the grouped coloumns with their respective summarized results, like means. 
